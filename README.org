@@ -48,7 +48,7 @@ git-annex-configure will only apply configurations of this nature for the reposi
 
 ** Examples
 
-Here is a fairly basic setup that with two client repositories:
+Here is a fairly basic setup with two client repositories:
 #+begin_src scheme
   (use-modules
    (git-annex-configure git remote))

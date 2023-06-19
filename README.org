@@ -21,7 +21,7 @@
 :CUSTOM_ID: introduction
 :END:
 
-git-annex-configure is a [[https://git-annex.branchable.com/][git-annex]] addon command for reducing the maintenance burden of applying repository settings. More specifically, git-annex-configure lets you specify settings for your repositories in [[https://www.gnu.org/software/guile/][Guile]] and can apply most of your configurations with a single execution of the command (why not all? see [[*Limitations][Limitations]]).
+git-annex-configure is a [[https://git-annex.branchable.com/][git-annex]] addon command for reducing the maintenance burden of applying repository settings. More specifically, git-annex-configure lets you specify settings for your repositories in [[https://www.gnu.org/software/guile/][Guile]] and can apply most of your configurations with a single execution of the command (why not all? see [[#Limitations][Limitations]]).
 
 * Installation
 :PROPERTIES:

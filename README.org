@@ -24,12 +24,10 @@ git-annex-configure is a [[https://git-annex.branchable.com/][git-annex]] addon 
 
 git-annex-configure is likely not available in your package manager's repositories at the moment, but feel free to open an issue if this statement becomes inaccurate.
 
-If you have [[https://guix.gnu.org/][GNU Guix]], this repository comes with a [[./guix.scm][guix.scm]] package that you can use for installation. The following can be run in the top-level path of the repository to install it to your default profile:
+If you have [[https://guix.gnu.org/][GNU Guix]], this repository comes with a package definition in [[./guix.scm][guix.scm]] that you can use for installation. After cloning this repository, the following can be run in where =guix.scm= is located to install it to your default profile:
 #+begin_src sh
   guix package --install-from-file=guix.scm
 #+end_src
-
-# TODO add git-based source package definition
 
 * Using git-annex-configure
 

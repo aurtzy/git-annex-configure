@@ -6,21 +6,27 @@
 
 * Table of Contents
 
-1. [[Introduction]]
-2. [[Installation]]
-3. [[Using git-annex-configure]]
-   1. [[Limitations]]
-   2. [[Examples]]
-   3. [[Specification]]
-4. [[Hacking git-annex-configure]]
-   1. [[Testing your changes]]
-   2. [[Running the test suites]]
+1. [[#intro][Introduction]]
+2. [[#install][Installation]]
+3. [[#using][Using git-annex-configure]]
+   1. [[#limitations][Limitations]]
+   2. [[#examples][Examples]]
+   3. [[#spec][Specification]]
+4. [[#hacking][Hacking git-annex-configure]]
+   1. [[#test-shell][Testing your changes]]
+   2. [[#test-suites][Running the test suites]]
 
 * Introduction
+:PROPERTIES:
+:CUSTOM_ID: intro
+:END:
 
-git-annex-configure is a [[https://git-annex.branchable.com/][git-annex]] addon command for reducing the maintenance burden of applying repository settings. More specifically, git-annex-configure lets you specify settings for your repositories in [[https://www.gnu.org/software/guile/][Guile]] and can apply most of your configurations with a single execution of the command (why not all? see [[Limitations]]).
+git-annex-configure is a [[https://git-annex.branchable.com/][git-annex]] addon command for reducing the maintenance burden of applying repository settings. More specifically, git-annex-configure lets you specify settings for your repositories in [[https://www.gnu.org/software/guile/][Guile]] and can apply most of your configurations with a single execution of the command (why not all? see [[*Limitations][Limitations]]).
 
 * Installation
+:PROPERTIES:
+:CUSTOM_ID: install
+:END:
 
 git-annex-configure is likely not available in your package manager's repositories at the moment, but feel free to open an issue if this statement becomes inaccurate.
 
@@ -30,12 +36,18 @@ If you have [[https://guix.gnu.org/][GNU Guix]], this repository comes with a pa
 #+end_src
 
 * Using git-annex-configure
+:PROPERTIES:
+:CUSTOM_ID: using
+:END:
 
 git-annex-configure expects and loads a =.annex.scm= located in the top level directory of your repository, which should evaluate to a valid configuration described in later examples. The suggested method of use is to commit this file as a non-annexed file (which should be done by default as a dotfile) so that the configuration can be applied from any repository if necessary.
 
 Optionally, =ANNEX_CONFIG_FILE= can be set so that the file path in this environment variable will be used instead.
 
 ** Limitations
+:PROPERTIES:
+:CUSTOM_ID: limitations
+:END:
 
 Most settings can be set from a single repository and then propagated via syncing to other repositories, which is what git-annex-configure takes advantage of. However, some settings are not propagated, and thus have to be applied on a repository-by-repository basis:
 - Remotes (including git-annex special remotes).
@@ -45,6 +57,9 @@ Most settings can be set from a single repository and then propagated via syncin
 git-annex-configure will only apply configurations of this nature for the repository that it is executed on, if any such configurations exist.
 
 ** Examples
+:PROPERTIES:
+:CUSTOM_ID: examples
+:END:
 
 Here is a fairly basic setup with two client repositories:
 #+begin_src scheme
@@ -103,6 +118,9 @@ For comparison, the above configuration would be equivalent to the following scr
 For a more extensive real-world example, you can see my personal configuration that I use in my data setup: <wip! link not available yet...>
 
 ** Specification
+:PROPERTIES:
+:CUSTOM_ID: spec
+:END:
 
 In addition to the above examples, this section gives one more example with comments describing the full configuration specification at a high level for easy reference of what settings exist and how to apply them. If you would like a lower-level reference, you might find it useful to start by examining [[file:src/git-annex-configure/spec.scm][spec.scm]], which is where the configuration record definitions are located.
 
@@ -207,6 +225,9 @@ With the exception of repository UUIDs (if any repository-configuration is speci
 #+end_src
 
 * Hacking git-annex-configure
+:PROPERTIES:
+:CUSTOM_ID: hacking
+:END:
 
 This project's infrastructure and development is managed primarily using Guix.
 
@@ -216,6 +237,9 @@ In the project root directory, run the following to enter an environment with al
 #+end_src
 
 ** Testing your changes
+:PROPERTIES:
+:CUSTOM_ID: test-shell
+:END:
 
 When you want to test your changes, you can run the following to build git-annex-configure and enter an environment with it included:
 #+begin_src sh
@@ -228,5 +252,8 @@ If you already have git-annex-configure installed, you should run the following 
 #+end_src
 
 ** Running the test suites
+:PROPERTIES:
+:CUSTOM_ID: test-suites
+:END:
 
 Tests exist in =./tests=, however they are fairly basic at the moment and lack instructions for ease of use due to a recent re-organization of the project structure.

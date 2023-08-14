@@ -205,12 +205,12 @@
                                         name)
                                        "/")))
                       ;; Only write if hook script has changed
-                      (unless (and (file-exists? file-path)
-                                   (equal? script
-                                           (call-with-port (open-input-file
-                                                            file-path)
-                                             (lambda (port)
-                                               (read port)))))
+                      (unless (false-if-exception
+                               (equal? script
+                                       (call-with-port (open-input-file
+                                                        file-path)
+                                         (lambda (port)
+                                           (read port)))))
                         (call-with-port (open-output-file file-path)
                           (lambda (port)
                             (format port "~a\n~s\n"

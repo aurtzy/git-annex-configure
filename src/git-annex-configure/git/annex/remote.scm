@@ -61,7 +61,7 @@
           (class-name (class-of self))
           (remote-name-ref self)))
 
-(define-method (%add-remote! (self <annex-repository>)
+(define-method (%remote-add! (self <annex-repository>)
                              (remote <special-remote>))
   (raise-exception
    (make-exception
@@ -69,5 +69,5 @@
     (make-exception-with-message
      "~a: ~a")
     (make-exception-with-irritants
-     (list "%add-remote! not implemented for class"
+     (list "%remote-add! not implemented for class"
            (class-name (class-of remote)))))))

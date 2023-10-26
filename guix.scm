@@ -14,7 +14,7 @@
 
 (package
   (name "git-annex-configure")
-  (version "1.0")
+  (version "1.0.0-dev")
   (source (local-file (dirname (current-filename))
                       #:recursive? #t))
   (build-system guile-build-system)
@@ -26,13 +26,13 @@
         (add-after 'install 'install-scripts
           (lambda* (#:key outputs #:allow-other-keys)
             (let ((out (assoc-ref outputs "out")))
-              (mkdir (string-append out"/bin"))
+              (mkdir (string-append out "/bin"))
               (symlink #$(program-file
                           "git-annex-configure"
                           '(begin
                              (use-modules (git-annex-configure main))
                              (main (command-line))))
-                       (string-append out"/bin/git-annex-configure"))))))))
+                       (string-append out "/bin/git-annex-configure"))))))))
   (native-inputs
    ;; Specify guile-3.0 here for guile-build-system and also in
    ;; propagated-inputs for runtime features (git hook scripts)
@@ -42,7 +42,8 @@
          git
          git-annex))
   (synopsis "Declarative git-annex configuration with Guile Scheme")
-  (description "git-annex-configure is a git-annex addon command for reducing the maintenance burden of applying repository settings.  More specifically, git-annex-configure lets you specify settings for your repositories in Guile and can apply most of your configurations with a single execution of the command.")
+  (description
+   "git-annex-configure is a git-annex addon command for reducing the maintenance burden of applying repository settings.  More specifically, git-annex-configure lets you specify settings for your repositories in Guile and can apply most of your configurations with a single execution of the command.")
   (home-page "https://github.com/aurtzy/git-annex-configure")
   (license license:gpl3+))
 

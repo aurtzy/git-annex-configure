@@ -38,14 +38,12 @@
   #:use-module (srfi srfi-34)
   #:use-module (oop goops)
   #:use-module (rnrs conditions)
-  #:export (VERSION
-            CONFIGURATION-FILE
+  #:export (CONFIGURATION-FILE
             load-configuration
             annex-configure))
 
-;; TODO make it so that I only have to edit version in one place? (right now
-;; needs to be edited here and guix.scm)
-(define VERSION "1.0")
+;; version.scm should be managed as a build-time variable
+(define VERSION (primitive-load-path "git-annex-configure/version.scm" #f))
 
 ;; Relative path from git-annex repository to configuration file.
 (define CONFIGURATION-FILE (or (getenv "ANNEX_CONFIG_FILE")

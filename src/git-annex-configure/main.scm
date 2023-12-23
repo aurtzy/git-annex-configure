@@ -45,61 +45,45 @@
 ;; version.scm should be managed as a build-time variable
 (define VERSION (primitive-load-path "git-annex-configure/version.scm" #f))
 
-;; Relative path from git-annex repository to configuration file.
-(define CONFIGURATION-FILE (or (getenv "ANNEX_CONFIG_FILE")
-                               ".annex.scm"))
-
-(define-method (load-configuration (self <annex-repository>))
+(define-method (load-configuration file)
   "Load the configuration file from a git-annex repository and return the
- resulting evaluation."
+ resulting configuration."
   (with-exception-handler
    (lambda (exn)
      (raise-exception
       (make-exception
        (make-external-error)
-       (make-exception-with-message
-        "~a: ~s")
-       (make-exception-with-irritants
-        (list "Unable to load configuration from repository"
-              (repository-path-ref self)))
+       (make-exception-with-message "Unable to load configuration")
        exn)))
    (lambda ()
-     ;; Load the most recent possible config - file may be unadded in
-     ;; non-bare repositories, in which case we primitive-load instead
-     ;; of using cat-file
-     (let ((toplevel (repository-toplevel-ref self)))
-       (save-module-excursion
-        (lambda ()
-          ;; spec module will always be needed to construct configuration, so we
-          ;; can have this be the current module during configuration loading
-          (set-current-module (resolve-module '(git-annex-configure spec)))
-          (let ((result
-                 (if toplevel
-                     (primitive-load (string-append
-                                      toplevel"/"CONFIGURATION-FILE))
-                     (eval-string (cat-file self CONFIGURATION-FILE)))))
-            (cond
-             ((configuration? result)
-              result)
-             (else
-              (raise-exception
-               (make-exception
-                (make-external-error)
-                (make-exception-with-message
-                 "~a: ~s")
-                (make-exception-with-irritants
-                 (list "Expected evaluation to be a <configuration> record"
-                       result)))))))))))))
+     (save-module-excursion
+      (lambda ()
+        ;; spec module will always be needed to construct configuration, so we
+        ;; can have this be the current module during configuration loading
+        (set-current-module (resolve-module '(git-annex-configure spec)))
+        (let ((result (primitive-load file)))
+          (cond
+           ((configuration? result)
+            result)
+           (else
+            (raise-exception
+             (make-exception
+              (make-external-error)
+              (make-exception-with-message
+               "~a: ~s")
+              (make-exception-with-irritants
+               (list "Expected evaluation to be a <configuration> record"
+                     result))))))))))))
 
-(define-method (annex-configure (self <annex-repository>)
-                                . options)
-  "Load the configuration file from a git-annex repository and apply it."
-  (format-log $info "Repository to configure: ~s\n"
-              (or (repository-toplevel-ref self)
-                  (repository-git-dir-ref self)))
-  (let ((configuration (load-configuration self))
-        (self-uuid (config-ref self "annex.uuid")))
-
+(define (annex-configure file)
+  "Load a configuration file and apply it to the git-annex repository it is
+contained in."
+  (let* ((self (annex-repository (dirname file)))
+         (configuration (load-configuration file))
+         (self-uuid (config-ref self "annex.uuid")))
+    (format-log $info "Repository to configure: ~s\n"
+                (or (repository-toplevel-ref self)
+                    (repository-git-dir-ref self)))
     ;; Apply global configurations
     (let ((annex-config-items (configuration-annex-config configuration)))
       (when annex-config-items
@@ -233,7 +217,7 @@
 
 (define main-help
   (format-usage
-   "--help | PATH PATH..."
+   "--help | [OPTION] ... FILE"
    "Read the configuration file from a git-annex repository path and apply the"
    "configuration."
    ""
@@ -253,7 +237,11 @@
 
 (define-public (git-annex-configure args)
   (let* ((options (main-getopts args))
-         (paths (option-ref options '() #f)))
+         (args (option-ref options '() #f))
+         (file (if (or (null? args)
+                       (> (length args) 1))
+                   #f
+                   (car args))))
     ;; Order of conditions for setting log level is important here; prioritize
     ;; more verbosity
     (log-level-set! (cond
@@ -265,17 +253,11 @@
       (display VERSION)
       (newline))
      ((or (option-ref options 'help #f)
-          (null? paths))
+          (not file))
       (display main-help)
       (newline))
      (else
-      (for-each
-       annex-configure
-       ;; Uniquify repository paths so we don't configure the same one multiple
-       ;; times
-       (map
-        annex-repository
-        (delete-duplicates paths)))))))
+      (annex-configure file)))))
 
 (define-public (main args)
   "Entry point."

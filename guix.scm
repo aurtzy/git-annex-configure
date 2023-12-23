@@ -47,7 +47,10 @@
          git-annex))
   (synopsis "Declarative git-annex configuration with Guile Scheme")
   (description
-   "git-annex-configure is a git-annex addon command for reducing the maintenance burden of applying repository settings.  More specifically, git-annex-configure lets you specify settings for your repositories in Guile and can apply most of your configurations with a single execution of the command.")
+   "git-annex-configure is a git-annex addon command that enables declarative
+configuration of git-annex repositories using Guile Scheme.  With a few
+limitations, settings for repositories can be applied with just a single
+execution of the command.")
   (home-page "https://github.com/aurtzy/git-annex-configure")
   (license license:gpl3+))
 

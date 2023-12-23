@@ -20,13 +20,13 @@
   (build-system guile-build-system)
   (arguments
    (list
-    #:source-directory "src"
+    #:source-directory "modules"
     #:phases
     #~(modify-phases %standard-phases
         (add-before 'build 'add-build-configurations
           (lambda* (#:key outputs #:allow-other-keys)
             (symlink #$(scheme-file "version.scm" version)
-                     "src/git-annex-configure/version.scm")))
+                     "modules/git-annex-configure/version.scm")))
         (add-after 'install 'install-scripts
           (lambda* (#:key outputs #:allow-other-keys)
             (let ((out (assoc-ref outputs "out")))

@@ -21,16 +21,24 @@
 :CUSTOM_ID: introduction
 :END:
 
-git-annex-configure is a [[https://git-annex.branchable.com/][git-annex]] addon command for reducing the maintenance burden of applying repository settings. More specifically, git-annex-configure lets you specify settings for your repositories in [[https://www.gnu.org/software/guile/][Guile]] and can apply most of your configurations with a single execution of the command (why not all? see [[#Limitations][Limitations]]).
+git-annex-configure is a [[https://git-annex.branchable.com/][git-annex]] addon command that enables declarative
+configuration of git-annex repositories using [[https://www.gnu.org/software/guile/][Guile Scheme]].  With a few
+[[Limitations][limitations]], you can apply settings for all of your repositories with a config
+file and a single execution of =git-annex-configure=.
 
 * Installation
 :PROPERTIES:
 :CUSTOM_ID: installation
 :END:
 
-git-annex-configure is likely not available in your package manager's repositories at the moment, but feel free to open an issue if this statement becomes inaccurate.
+git-annex-configure is likely not available in your package manager's
+repositories at the moment, but feel free to open an issue if this statement
+becomes inaccurate.
 
-If you have [[https://guix.gnu.org/][GNU Guix]], this repository comes with a package definition in [[./guix.scm][guix.scm]] that you can use for installation. After cloning this repository, the following can be run in where =guix.scm= is located to install it to your default profile:
+If you have [[https://guix.gnu.org/][GNU Guix]], this repository comes with a package definition in
+[[./guix.scm][guix.scm]] that you can use for installation. After cloning this repository, the
+following can be run in the directory where =guix.scm= is located to install it
+to your default profile:
 #+begin_src sh
   guix package --install-from-file=guix.scm
 #+end_src
@@ -42,24 +50,28 @@ If you have [[https://guix.gnu.org/][GNU Guix]], this repository comes with a pa
 
 To apply a configuration, simply run something like this:
 #+begin_src sh
-  git-annex configure /path/to/repository
+  git-annex configure /path/to/config/file
 #+end_src
 
-git-annex-configure expects and loads =.annex.scm= at the top level of the repository that /path/to/repository is located in, which should evaluate to a valid configuration described in later examples. The suggested method of use is to commit this file as a non-annexed file (which should be done by default as a dotfile) so that the configuration can be applied from any repository if necessary.
-
-Optionally, =ANNEX_CONFIG_FILE= can be set so that the file path in this environment variable will be used instead.
+The configuration file should be located inside a git-annex repository,
+otherwise git-annex-configure will not know what repository it should operate
+on.
 
 ** Limitations
 :PROPERTIES:
 :CUSTOM_ID: limitations
 :END:
 
-Most settings can be set from a single repository and then propagated via syncing to other repositories, which is what git-annex-configure takes advantage of. However, some settings are not propagated, and thus have to be applied on a repository-by-repository basis:
+Most settings can be set from a single repository and then propagated via
+syncing to other repositories, which is what git-annex-configure takes advantage
+of. However, some settings are not propagated (i.e. can only be done when on the
+same machine), and thus have to be applied on a repository-by-repository basis:
 - Remotes (including git-annex special remotes).
 - Git config (/not/ including git-annex config).
 - Hooks.
 
-git-annex-configure will only apply configurations of this nature for the repository that it is executed on, if any such configurations exist.
+git-annex-configure will only apply configurations of this nature for the
+repository that it is executed on, if any such configurations exist.
 
 ** Examples
 :PROPERTIES:
@@ -100,7 +112,8 @@ Here is a fairly basic setup with two client repositories:
        (list (remote "repository-1" "/path/to/repository-1")))))))
 #+end_src
 
-For comparison, the above configuration would be equivalent to the following script:
+For comparison, the above configuration would be equivalent to the following
+script:
 #+begin_src sh
   git-annex config --set annex.largefiles \
             "exclude=.annex.scm and exclude=.gitignore and exclude=*/.gitignore"
@@ -120,16 +133,26 @@ For comparison, the above configuration would be equivalent to the following scr
 #+end_src
 
 # TODO insert data setup link
-For a more extensive real-world example, you can see my personal configuration that I use in my data setup: <wip! link not available yet...>
 
 ** Specification
 :PROPERTIES:
 :CUSTOM_ID: specification
 :END:
 
-In addition to the above examples, this section gives one more example with comments describing the full configuration specification at a high level for easy reference of what settings exist and how to apply them. If you would like a lower-level reference, you might find it useful to start by examining [[file:src/git-annex-configure/spec.scm][spec.scm]], which is where the configuration record definitions are located.
+In addition to the above examples, this section gives one more example with
+comments describing the full configuration specification at a high level for
+easy reference of what settings exist and how to apply them. If you would like a
+lower-level reference, you might find it useful to start by examining [[file:src/git-annex-configure/spec.scm][spec.scm]],
+which is where the configuration record definitions are located.
 
-With the exception of repository UUIDs (if any repository-configuration is specified) - which are not modified, but used as identifiers - all settings are optional and may be omitted. Omitted settings will not be touched. Otherwise, expect that any specified setting will have its corresponding setting in the repository be modified or overwritten.
+With the exception of repository UUIDs (if any repository-configuration is
+specified) - which are not modified, but used as identifiers - all settings are
+optional and may be omitted.
+
+Omitted settings will not be touched, so existing settings may coexist with
+settings specified for git-annex-configure. Otherwise, expect that any specified
+setting will have its corresponding setting in the repository be modified or
+overwritten.
 
 #+begin_src scheme
   ;; use-modules may be needed for certain procedures to be available.
@@ -236,7 +259,8 @@ With the exception of repository UUIDs (if any repository-configuration is speci
 
 This project's infrastructure and development is managed primarily using Guix.
 
-In the project root directory, run the following to enter an environment with all the necessary dependencies:
+In the project root directory, run the following to enter an environment with
+all the necessary dependencies:
 #+begin_src sh
   guix shell
 #+end_src
@@ -246,12 +270,14 @@ In the project root directory, run the following to enter an environment with al
 :CUSTOM_ID: testing-your-changes
 :END:
 
-When you want to test your changes, you can run the following to build git-annex-configure and enter an environment with it included:
+When you want to test your changes, you can run the following to build
+git-annex-configure and enter an environment with it included:
 #+begin_src sh
   guix shell -f guix.scm
 #+end_src
 
-If you already have git-annex-configure installed, you should run the following instead to avoid using modules from the currently installed version:
+If you already have git-annex-configure installed, you should run the following
+instead to avoid using modules from the currently installed version:
 #+begin_src sh
   guix shell --container -f guix.scm
 #+end_src
@@ -261,4 +287,6 @@ If you already have git-annex-configure installed, you should run the following 
 :CUSTOM_ID: running-the-test-suites
 :END:
 
-Tests exist in =./tests=, however they are fairly basic at the moment and lack instructions for ease of use due to a recent re-organization of the project structure.
+Tests exist in =./tests=, however they are fairly basic at the moment and lack
+instructions for ease of use due to a recent re-organization of the project
+structure.

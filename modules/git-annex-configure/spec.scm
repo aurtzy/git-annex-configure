@@ -29,6 +29,15 @@
   #:export (<repository-configuration>
             repository-configuration repository-configuration?
             this-repository-configuration
+            repository-configuration-uuid
+            repository-configuration-disabled?
+            repository-configuration-description
+            repository-configuration-wanted
+            repository-configuration-required
+            repository-configuration-groups
+            repository-configuration-remotes
+            repository-configuration-config
+            repository-configuration-hooks
             configuration-uuid
             configuration-disabled?
             configuration-description
@@ -38,10 +47,14 @@
             configuration-remotes
             configuration-config
             configuration-hooks
-            
-            <configuration>
-            configuration configuration?
-            this-configuration
+
+            <global-configuration>
+            global-configuration global-configuration?
+            this-global-configuration
+            global-configuration-annex-config
+            global-configuration-groupwanted
+            global-configuration-repositories
+            configuration?
             configuration-annex-config
             configuration-groupwanted
             configuration-repositories
@@ -53,10 +66,22 @@
             local-configuration-config
             local-configuration-hooks))
 
-;; Sanitization procedures provide assertions with formatted error messages.
-;; Return values of procedures should be the sanitized value, which may or may
-;; not be the same. Procedures are expected to have the #:accept-false? key for
-;; cases where #f is not acceptable.
+;;; Sanitization procedures provide assertions with formatted error messages.
+;;; Return values of procedures should be the sanitized value, which may or may
+;;; not be the same. Procedures are expected to have the #:accept-false? key for
+;;; cases where #f is not acceptable.
+
+(define ((sanitize-with-deprecation-warning msg sanitize-field)
+         raw)
+  (when raw
+    (format (current-error-port) "Warning: ~a\n" msg))
+  (sanitize-field raw))
+
+(define ((proc-with-deprecation-warning proc) . args)
+  (format (current-error-port)
+          "Warning: Use of deprecated procedure: ~a\n"
+          (procedure-name proc))
+  (apply proc args))
 
 (define* ((sanitize-self field
                          #:key
@@ -267,40 +292,86 @@ objects and tries to apply it to the `remotes' constructor."
   repository-configuration make-repository-configuration
   repository-configuration?
   this-repository-configuration
-  (uuid configuration-uuid
+  (uuid repository-configuration-uuid
         (sanitize (sanitize-string "repository uuid")))
-  (disabled? configuration-disabled?
+  (disabled? repository-configuration-disabled?
              (default #f))
 
   ;; These configurations can be applied from any repository.
-  (description configuration-description
+  (description repository-configuration-description
                (default #f)
                (sanitize (sanitize-string "description")))
-  (wanted configuration-wanted
+  (wanted repository-configuration-wanted
           (default #f)
           (sanitize (sanitize-string "wanted matchexpression")))
-  (required configuration-required
+  (required repository-configuration-required
             (default #f)
             (sanitize (sanitize-string "required matchexpression")))
-  (groups configuration-groups
+  (groups repository-configuration-groups
           (default #f)
           (sanitize (sanitize-groups "groups")))
 
+  ;; TODO Below fields are deprecated in favor of fields in local-configuration.
+  ;;
   ;; These configurations can only be applied locally - there appears to be no
   ;; method of syncing state for these settings.
   (remotes configuration-remotes
            (default #f)
-           (sanitize (sanitize-remotes "remotes")))
+           (sanitize
+            (sanitize-with-deprecation-warning
+             (format #f
+                     (string-append
+                      "Remotes field for ~a is deprecated in favor of being "
+                      "declared via ~a")
+                     <repository-configuration>
+                     <local-configuration>)
+             (sanitize-remotes "remotes"))))
   (config configuration-config
           (default #f)
-          (sanitize ((sanitize-alist sanitize-string
-                                     sanitize-string)
-                     "git config")))
+          (sanitize
+           (sanitize-with-deprecation-warning
+            (format #f
+                    (string-append
+                     "Git config field for ~a is deprecated in favor of being "
+                     "declared via ~a")
+                    <repository-configuration>
+                    <local-configuration>)
+            ((sanitize-alist sanitize-string
+                             sanitize-string)
+             "git config"))))
   (hooks configuration-hooks
          (default #f)
-         (sanitize ((sanitize-alist sanitize-string
-                                    sanitize-self)
-                    "hooks"))))
+         (sanitize
+          (sanitize-with-deprecation-warning
+           (format #f
+                   (string-append
+                    "Hooks field for ~a is deprecated in favor of being "
+                    "declared via ~a")
+                   <repository-configuration>
+                   <local-configuration>)
+           ((sanitize-alist sanitize-string
+                            sanitize-self)
+            "hooks")))))
+
+;;; TODO Deprecated repository-configuration aliases
+(define configuration-uuid
+  (proc-with-deprecation-warning
+   repository-configuration-uuid))
+(define configuration-disabled?
+  (proc-with-deprecation-warning
+   repository-configuration-disabled?))
+(define configuration-description
+  (proc-with-deprecation-warning
+   repository-configuration-description))
+(define configuration-wanted
+  (proc-with-deprecation-warning
+   repository-configuration-wanted))
+(define configuration-required
+  (proc-with-deprecation-warning
+   repository-configuration-required))
+(define configuration-groups
+  (proc-with-deprecation-warning
+   repository-configuration-groups))
 
 (define* ((sanitize-repository-configuration field
                                              #:key
@@ -324,24 +395,45 @@ objects and tries to apply it to the `remotes' constructor."
              "field value not a valid repository configuration"
              raw)))))))
 
-(define-record-type* <configuration>
-  configuration make-configuration
-  configuration?
-  this-configuration
-  (annex-config configuration-annex-config
+(define-record-type* <global-configuration>
+  global-configuration make-global-configuration
+  global-configuration?
+  this-global-configuration
+  (annex-config global-configuration-annex-config
                 (default #f)
                 (sanitize ((sanitize-alist sanitize-string
                                            sanitize-string)
-                           "git-annex config")))
-  (groupwanted configuration-groupwanted
+                           "global git-annex config")))
+  (groupwanted global-configuration-groupwanted
                (default #f)
                (sanitize ((sanitize-alist sanitize-group
                                           sanitize-string)
-                          "groupwanted matchexpressions")))
-  (repositories configuration-repositories
+                          "global groupwanted matchexpressions")))
+  (repositories global-configuration-repositories
                 (default '())
                 (sanitize ((sanitize-list sanitize-repository-configuration)
-                           "repository configurations"))))
+                           "global repository configurations"))))
+
+;;; TODO Deprecated global-configuration aliases
+(define-syntax-rule (configuration field ...)
+  (begin
+    (format (current-error-port)
+            "Warning: ~a; ~a\n"
+            "configuration is a deprecated macro"
+            "use global-configuration instead")
+    (global-configuration field ...)))
+(define configuration?
+  (proc-with-deprecation-warning
+   global-configuration?))
+(define configuration-annex-config
+  (proc-with-deprecation-warning
+   global-configuration-annex-config))
+(define configuration-groupwanted
+  (proc-with-deprecation-warning
+   global-configuration-groupwanted))
+(define configuration-repositories
+  (proc-with-deprecation-warning
+   global-configuration-repositories))
 
 (define-record-type* <local-configuration>
   local-configuration make-local-configuration

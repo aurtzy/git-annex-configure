@@ -44,7 +44,14 @@
             this-configuration
             configuration-annex-config
             configuration-groupwanted
-            configuration-repositories))
+            configuration-repositories
+
+            <local-configuration>
+            local-configuration local-configuration?
+            this-local-configuration
+            local-configuration-remotes
+            local-configuration-config
+            local-configuration-hooks))
 
 ;; Sanitization procedures provide assertions with formatted error messages.
 ;; Return values of procedures should be the sanitized value, which may or may
@@ -335,3 +342,21 @@ objects and tries to apply it to the `remotes' constructor."
                 (default '())
                 (sanitize ((sanitize-list sanitize-repository-configuration)
                            "repository configurations"))))
+
+(define-record-type* <local-configuration>
+  local-configuration make-local-configuration
+  local-config?
+  this-local-configuration
+  (remotes local-configuration-remotes
+           (default #f)
+           (sanitize (sanitize-remotes "remotes")))
+  (config local-configuration-config
+          (default #f)
+          (sanitize ((sanitize-alist sanitize-string
+                                     sanitize-string)
+                     "git config")))
+  (hooks local-configuration-hooks
+         (default #f)
+         (sanitize ((sanitize-alist sanitize-string
+                                    sanitize-self)
+                    "hooks"))))

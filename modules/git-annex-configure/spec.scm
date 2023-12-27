@@ -414,7 +414,8 @@ objects and tries to apply it to the `remotes' constructor."
   (repositories global-configuration-repositories
                 (default '())
                 (sanitize ((sanitize-list sanitize-repository-configuration)
-                           "global repository configurations"))))
+                           "global repository configurations"
+                           #:accept-false? #f))))
 
 ;;; TODO Deprecated global-configuration aliases
 (define-syntax-rule (configuration field ...)

@@ -438,7 +438,7 @@ objects and tries to apply it to the `remotes' constructor."
 
 (define-record-type* <local-configuration>
   local-configuration make-local-configuration
-  local-config?
+  local-configuration?
   this-local-configuration
   (remotes local-configuration-remotes
            (default #f)

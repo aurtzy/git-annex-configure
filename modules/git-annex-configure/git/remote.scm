@@ -19,6 +19,7 @@
   #:use-module (git-annex-configure git repository)
   #:use-module (git-annex-configure utils)
   #:use-module (ice-9 exceptions)
+  #:use-module (ice-9 optargs)
   #:use-module (oop goops)
   #:use-module (srfi srfi-1)
   #:export (<remote-name>
@@ -230,15 +231,19 @@ exception if remote is unable to be removed."
   (remote-remove! self (remote-name name)))
 
 (define-method (%remote-add! (self <repository>)
-                             (remote <remote>))
+                             (remote <remote>)
+                             . args)
   "Lower level procedure for adding a remote. If a remote of the same name
 already exists, this procedure will raise an exception."
-  (invoke-git self
-              "remote"
-              "add"
-              "--"
-              (remote-name-ref (remote-name-ref remote))
-              (remote-url-ref remote)))
+  (let-keywords
+   args #f ((name-prefix ""))
+   (invoke-git self
+               "remote"
+               "add"
+               "--"
+               (string-append name-prefix
+                              (remote-name-ref (remote-name-ref remote)))
+               (remote-url-ref remote))))
 
 (define-method (%remote-add! (self <repository>)
                              (name <remote-name>)
@@ -256,12 +261,18 @@ already exists, this procedure will raise an exception."
   (remote-set! self (remote name url)))
 
 (define-method (remotes-set! (self <repository>)
-                             (remotes <remotes>))
-  (for-each
-   (lambda (remote)
-     (%remote-remove! self (remote-name-ref remote)))
-   (remotes-ref (remotes-ref self)))
-  (for-each
-   (lambda (remote)
-     (%remote-add! self remote))
-   (remotes-ref remotes)))
+                             (remotes <remotes>)
+                             . args)
+  (let-keywords
+   args #f ((name-prefix ""))
+   (for-each
+    (lambda (remote)
+      (%remote-remove! self (remote-name-ref remote)))
+    (filter (lambda (remote)
+              (let ((remote-name (remote-name-ref remote)))
+                (string-prefix? name-prefix (remote-name-ref remote-name))))
+            (remotes-ref (remotes-ref self))))
+   (for-each
+    (lambda (remote)
+      (%remote-add! self remote #:name-prefix name-prefix))
+    (remotes-ref remotes))))

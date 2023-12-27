@@ -63,6 +63,7 @@
             <local-configuration>
             local-configuration local-configuration?
             this-local-configuration
+            local-configuration-remotes-name-prefix
             local-configuration-remotes
             local-configuration-config
             local-configuration-hooks))
@@ -440,6 +441,10 @@ objects and tries to apply it to the `remotes' constructor."
   local-configuration make-local-configuration
   local-configuration?
   this-local-configuration
+  (remotes-name-prefix local-configuration-remotes-name-prefix
+                       (default "auto-")
+                       (sanitize (sanitize-string "remotes name prefix"
+                                                  #:accept-false? #f)))
   (remotes local-configuration-remotes
            (default #f)
            (sanitize (sanitize-remotes "remotes")))

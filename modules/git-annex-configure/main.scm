@@ -182,7 +182,10 @@
   (let ((remotes (local-configuration-remotes local-config)))
     (when remotes
       (format-log $info "Configuring git remotes...")
-      (remotes-set! local-repo remotes)
+      (remotes-set! local-repo
+                    remotes
+                    #:name-prefix (local-configuration-remotes-name-prefix
+                                   local-config))
       (newline)))
   ;; TODO perhaps write compiled hook scripts instead to remove need
   ;; for propagated guile input?

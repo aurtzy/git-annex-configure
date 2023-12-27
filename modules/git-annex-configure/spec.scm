@@ -21,6 +21,7 @@
   #:use-module (git-annex-configure git annex repository)
   #:use-module (git-annex-configure git annex group)
   #:use-module (git-annex-configure git annex remote)
+  #:use-module (git-annex-configure logging)
   #:use-module (git-annex-configure records)
   #:use-module (ice-9 curried-definitions)
   #:use-module (ice-9 exceptions)
@@ -74,13 +75,13 @@
 (define ((sanitize-with-deprecation-warning msg sanitize-field)
          raw)
   (when raw
-    (format (current-error-port) "Warning: ~a\n" msg))
+    (format-log $warning "~a" msg))
   (sanitize-field raw))
 
 (define ((proc-with-deprecation-warning proc) . args)
-  (format (current-error-port)
-          "Warning: Use of deprecated procedure: ~a\n"
-          (procedure-name proc))
+  (format-log $warning
+              "Use of deprecated procedure: ~a"
+              (procedure-name proc))
   (apply proc args))
 
 (define* ((sanitize-self field
@@ -417,10 +418,10 @@ objects and tries to apply it to the `remotes' constructor."
 ;;; TODO Deprecated global-configuration aliases
 (define-syntax-rule (configuration field ...)
   (begin
-    (format (current-error-port)
-            "Warning: ~a; ~a\n"
-            "configuration is a deprecated macro"
-            "use global-configuration instead")
+    (format-log $warning
+                "~a; ~a"
+                "configuration is a deprecated macro"
+                "use global-configuration instead")
     (global-configuration field ...)))
 (define configuration?
   (proc-with-deprecation-warning

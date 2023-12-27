@@ -257,6 +257,12 @@ contained in."
       (display main-help)
       (newline))
      (else
+      (when (not (eq? 'regular (stat:type (stat file))))
+        (raise-exception
+         (make-exception
+          (make-exception-with-message (format #f
+                                               "Not a file: ~s"
+                                               file)))))
       (annex-configure file)))))
 
 (define-public (main args)

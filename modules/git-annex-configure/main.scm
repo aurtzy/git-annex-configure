@@ -39,174 +39,226 @@
   #:use-module (oop goops)
   #:use-module (rnrs conditions)
   #:export (CONFIGURATION-FILE
-            load-configuration
+            with-module-load
+            annex-configure-global
+            annex-configure-local
             annex-configure))
 
 ;; version.scm should be managed as a build-time variable
 (define VERSION (primitive-load-path "git-annex-configure/version.scm" #f))
 
-(define-method (load-configuration file)
-  "Load the configuration file from a git-annex repository and return the
- resulting configuration."
+(define-method (annex-configure-global (local-repo <annex-repository>)
+                                       global-config)
+  "Configure global git-annex repository settings."
+  (define local-repo-uuid (config-ref local-repo "annex.uuid"))
+
+  (let ((annex-config-items (global-configuration-annex-config global-config)))
+    (when annex-config-items
+      (format-log $info "Configuring global git-annex config...")
+      (for-each
+       (lambda (item)
+         (let ((key (car item))
+               (value (cdr item)))
+           (unless (equal? value
+                           (annex-config-ref local-repo key))
+             (annex-config-set! local-repo key value))))
+       annex-config-items)
+      (newline)))
+  (let ((groupwanted-items (global-configuration-groupwanted global-config)))
+    (when groupwanted-items
+      (format-log $info "Configuring global git-annex groupwanted...")
+      (for-each
+       (lambda (item)
+         (let ((group (car item))
+               (expr (cdr item)))
+           (groupwanted-set! local-repo group expr)))
+       groupwanted-items)
+      (newline)))
+
+  ;; Apply non-disabled repo-specific configs for each uuid specified in config
+  (for-each
+   (lambda (repo-config)
+     (define uuid (repository-configuration-uuid repo-config))
+
+     (format-log $info
+                 "~a: ~s~a\n"
+                 "Configuring repository uuid"
+                 uuid
+                 (if (equal? local-repo-uuid uuid)
+                     " [self]"
+                     ""))
+     (let ((description (repository-configuration-description repo-config)))
+       (when description
+         (format-log $info "Configuring git-annex description...")
+         (description-set! local-repo description #:remote uuid)
+         (newline)))
+     (let ((wanted (repository-configuration-wanted repo-config)))
+       (when wanted
+         (format-log $info "Configuring git-annex wanted...")
+         (wanted-set! local-repo wanted #:remote uuid)
+         (newline)))
+     (let ((required (repository-configuration-required repo-config)))
+       (when required
+         (format-log $info "Configuring git-annex required...")
+         (required-set! local-repo required #:remote uuid)
+         (newline)))
+     (let ((groups (repository-configuration-groups repo-config)))
+       (when groups
+         (format-log $info "Configuring git-annex groups...")
+         (groups-set! local-repo groups #:remote uuid)
+         (newline)))
+
+     ;; TODO Deprecated; should only be done with local-configuration
+     ;;
+     ;; The following configurations cannot be set from another repository, thus
+     ;; we only run them on the current one.
+
+     (when (equal? local-repo-uuid uuid)
+       (let ((config-items (configuration-config repo-config)))
+         (when config-items
+           (format-log $info "Configuring git config...")
+           (for-each
+            (lambda (item)
+              (let ((key (car item))
+                    (value (cdr item)))
+                (config-set! local-repo key value)))
+            config-items)
+           (newline)))
+       (let ((remotes (configuration-remotes repo-config)))
+         (when remotes
+           (format-log $info "Configuring git remotes...")
+           (remotes-set! local-repo remotes)
+           (newline)))
+       (let ((hooks (configuration-hooks repo-config)))
+         (when hooks
+           (format-log $info "Configuring hooks...")
+           (for-each
+            (lambda (hook)
+              (let* ((name (car hook))
+                     (script (cdr hook))
+                     (file-path (string-join
+                                 (list
+                                  (repository-git-dir-ref local-repo)
+                                  "hooks"
+                                  name)
+                                 "/")))
+                ;; Only write if hook script has changed
+                (unless (false-if-exception
+                         (equal? script
+                                 (call-with-port (open-input-file
+                                                  file-path)
+                                   (lambda (port)
+                                     (read port)))))
+                  (call-with-port (open-output-file file-path)
+                    (lambda (port)
+                      (format port
+                              "~a\n~a\n\n"
+                              "#!/usr/bin/env -S guile -s"
+                              "!#")
+                      (pretty-print script port)
+                      (chmod port
+                             (logior #o111 (stat:perms
+                                            (stat port)))))))))
+            hooks)
+           (newline)))))
+   (filter
+    (lambda (repo-config)
+      (not (repository-configuration-disabled? repo-config)))
+    (global-configuration-repositories global-config))))
+
+(define-method (annex-configure-local (local-repo <annex-repository>)
+                                      local-config)
+  "Configure local git-annex repository settings."
+  (let ((config-items (local-configuration-config local-config)))
+    (when config-items
+      (format-log $info "Configuring git config...")
+      (for-each
+       (lambda (item)
+         (let ((key (car item))
+               (value (cdr item)))
+           (config-set! local-repo key value)))
+       config-items)
+      (newline)))
+  (let ((remotes (local-configuration-remotes local-config)))
+    (when remotes
+      (format-log $info "Configuring git remotes...")
+      (remotes-set! local-repo remotes)
+      (newline)))
+  ;; TODO perhaps write compiled hook scripts instead to remove need
+  ;; for propagated guile input?
+  (let ((hooks (local-configuration-hooks local-config)))
+    (when hooks
+      (format-log $info "Configuring hooks...")
+      (for-each
+       (lambda (hook)
+         (let* ((name (car hook))
+                (script (cdr hook))
+                (file-path (string-join
+                            (list (repository-git-dir-ref local-repo)
+                                  "hooks"
+                                  name)
+                            "/")))
+           ;; Only write if hook script has changed
+           (unless (false-if-exception
+                    (equal? script
+                            (call-with-port (open-input-file
+                                             file-path)
+                              (lambda (port)
+                                (read port)))))
+             (call-with-port (open-output-file file-path)
+               (lambda (port)
+                 (format port
+                         "~a\n~a\n\n"
+                         "#!/usr/bin/env -S guile -s"
+                         "!#")
+                 (pretty-print script port)
+                 ;; Make sure script is executable
+                 (chmod port
+                        (logior #o111 (stat:perms
+                                       (stat port)))))))))
+       hooks)
+      (newline))))
+
+(define (with-module-load name file)
+  "Load a file with current module set to the specified name."
   (with-exception-handler
    (lambda (exn)
      (raise-exception
       (make-exception
        (make-external-error)
-       (make-exception-with-message "Unable to load configuration")
+       (make-exception-with-message "Unable to load file")
        exn)))
    (lambda ()
      (save-module-excursion
       (lambda ()
-        ;; spec module will always be needed to construct configuration, so we
-        ;; can have this be the current module during configuration loading
-        (set-current-module (resolve-module '(git-annex-configure spec)))
-        (let ((result (primitive-load file)))
-          (cond
-           ((configuration? result)
-            result)
-           (else
-            (raise-exception
-             (make-exception
-              (make-external-error)
-              (make-exception-with-message
-               "~a: ~s")
-              (make-exception-with-irritants
-               (list "Expected evaluation to be a <configuration> record"
-                     result))))))))))))
+        (set-current-module (resolve-module name))
+        (primitive-load file))))))
 
-(define (annex-configure file)
-  "Load a configuration file and apply it to the git-annex repository it is
-contained in."
-  (let* ((self (annex-repository (dirname file)))
-         (configuration (load-configuration file))
-         (self-uuid (config-ref self "annex.uuid")))
-    (format-log $info "Repository to configure: ~s\n"
-                (or (repository-toplevel-ref self)
-                    (repository-git-dir-ref self)))
-    ;; Apply global configurations
-    (let ((annex-config-items (configuration-annex-config configuration)))
-      (when annex-config-items
-        (format-log $info "Configuring git-annex config...")
-        (for-each
-         (lambda (item)
-           (let ((key (car item))
-                 (value (cdr item)))
-             (unless (equal? value
-                             (annex-config-ref self key))
-               (annex-config-set! self key value))))
-         annex-config-items)
-        (newline)))
-    (let ((groupwanted-items (configuration-groupwanted configuration)))
-      (when groupwanted-items
-        (format-log $info "Configuring git-annex groupwanted...")
-        (for-each
-         (lambda (item)
-           (let ((group (car item))
-                 (expr (cdr item)))
-             (groupwanted-set! self group expr)))
-         groupwanted-items)
-        (newline)))
-
-    ;; Apply non-disabled repo-specific configs for each uuid specified in
-    ;; config
-    (let ((repo-configs (filter
-                         (lambda (repo-config)
-                           (not (configuration-disabled? repo-config)))
-                         (configuration-repositories configuration))))
-      (for-each
-       (lambda (repo-config)
-         (let ((uuid (configuration-uuid repo-config)))
-           (format-log $info
-                       (string-append "~a: ~s~a\n")
-                       "Configuring repository uuid"
-                       uuid
-                       (if (equal? self-uuid uuid)
-                           " [self]"
-                           ""))
-           
-           (let ((description (configuration-description repo-config)))
-             (when description
-               (format-log $info "Configuring git-annex description...")
-               (description-set! self
-                                 description
-                                 #:remote uuid)
-               (newline)))
-           (let ((wanted (configuration-wanted repo-config)))
-             (when wanted
-               (format-log $info "Configuring git-annex wanted...")
-               (wanted-set! self
-                            wanted
-                            #:remote uuid)
-               (newline)))
-           (let ((required (configuration-required repo-config)))
-             (when required
-               (format-log $info "Configuring git-annex required...")
-               (required-set! self
-                              required
-                              #:remote uuid)
-               (newline)))
-           (let ((groups (configuration-groups repo-config)))
-             (when groups
-               (format-log $info "Configuring git-annex groups...")
-               (groups-set! self
-                            groups
-                            #:remote uuid)
-               (newline)))
-
-           ;; The following configurations cannot be set from another
-           ;; repository, thus we only run them on the current one.
-           (when (equal? self-uuid uuid)
-             (let ((config-items (configuration-config repo-config)))
-               (when config-items
-                 (format-log $info "Configuring git config...")
-                 (for-each
-                  (lambda (item)
-                    (let ((key (car item))
-                          (value (cdr item)))
-                      (config-set! self key value)))
-                  config-items)
-                 (newline)))
-             (let ((remotes (configuration-remotes repo-config)))
-               (when remotes
-                 (format-log $info "Configuring git remotes...")
-                 (remotes-set! self remotes)
-                 (newline)))
-             ;; TODO perhaps write compiled hook scripts instead to remove need
-             ;; for propagated guile input?
-             (let ((hooks (configuration-hooks repo-config)))
-               (when hooks
-                 (format-log $info "Configuring hooks...")
-                 (for-each
-                  (lambda (hook)
-                    (let* ((name (car hook))
-                           (script (cdr hook))
-                           (file-path (string-join
-                                       (list
-                                        (repository-git-dir-ref self)
-                                        "hooks"
-                                        name)
-                                       "/")))
-                      ;; Only write if hook script has changed
-                      (unless (false-if-exception
-                               (equal? script
-                                       (call-with-port (open-input-file
-                                                        file-path)
-                                         (lambda (port)
-                                           (read port)))))
-                        (call-with-port (open-output-file file-path)
-                          (lambda (port)
-                            (format port
-                                    "~a\n~a\n\n"
-                                    "#!/usr/bin/env -S guile -s"
-                                    "!#")
-                            (pretty-print script port)
-                            (chmod port
-                                   (logior #o111 (stat:perms
-                                                  (stat port)))))))))
-                  hooks)
-                 (newline))))))
-       repo-configs))))
+(define-method (annex-configure file)
+  "Load a configuration file and apply the relevant procedure to the git-annex
+repository it is contained in."
+  (let* ((local-repo (annex-repository (dirname file)))
+         (config (with-module-load '(git-annex-configure spec) file)))
+    (format-log $info
+                "Repository to configure: ~s\n"
+                (or (repository-toplevel-ref local-repo)
+                    (repository-git-dir-ref local-repo)))
+    (cond
+     ((global-configuration? config)
+      (annex-configure-global local-repo config))
+     ((local-configuration? config)
+      (annex-configure-local local-repo config))
+     (else
+      (raise-exception
+       (make-exception
+        (make-external-error)
+        (make-exception-with-message
+         (format #f
+                 (string-append
+                  "Evaluation of file not a <global-configuration> or "
+                  "<local-configuration>: ~s")))
+        (make-exception-with-irritants
+         (list file))))))))
 
 (define (format-usage usage . rest)
   (string-join

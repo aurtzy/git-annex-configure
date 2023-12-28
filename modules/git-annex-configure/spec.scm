@@ -443,7 +443,7 @@ objects and tries to apply it to the `remotes' constructor."
   local-configuration?
   this-local-configuration
   (remotes-name-prefix local-configuration-remotes-name-prefix
-                       (default "auto-")
+                       (default "auto--")
                        (sanitize (sanitize-string "remotes name prefix"
                                                   #:accept-false? #f)))
   (remotes local-configuration-remotes

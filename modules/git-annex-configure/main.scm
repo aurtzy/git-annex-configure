@@ -223,7 +223,8 @@
       (newline))))
 
 (define (with-module-load name file)
-  "Load a file with current module set to the specified name."
+  "Load a file with current module set to the specified name.  Sets working
+directory to the directory of the file before loading it."
   (with-exception-handler
    (lambda (exn)
      (raise-exception
@@ -235,7 +236,10 @@
      (save-module-excursion
       (lambda ()
         (set-current-module (resolve-module name))
-        (primitive-load file))))))
+        (with-chdir
+         (dirname file)
+         (lambda ()
+           (primitive-load (basename file)))))))))
 
 (define-method (annex-configure file)
   "Load a configuration file and apply the relevant procedure to the git-annex

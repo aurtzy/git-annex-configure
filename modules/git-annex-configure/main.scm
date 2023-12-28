@@ -241,11 +241,11 @@ directory to the directory of the file before loading it."
          (lambda ()
            (primitive-load (basename file)))))))))
 
-(define-method (annex-configure file)
-  "Load a configuration file and apply the relevant procedure to the git-annex
-repository it is contained in."
-  (let* ((local-repo (annex-repository (dirname file)))
-         (config (with-module-load '(git-annex-configure spec) file)))
+(define-method (annex-configure (local-repo <annex-repository>)
+                                file)
+  "Load a configuration file and dispatch to the relevant procedure depending
+on the type of configuration."
+  (let ((config (with-module-load '(git-annex-configure spec) file)))
     (format-log $info
                 "Repository to configure: ~s\n"
                 (or (repository-toplevel-ref local-repo)
@@ -283,6 +283,9 @@ repository it is contained in."
    "Options:"
    "  -h, --help"
    "      Display this help message."
+   "  -C, --repository-dir"
+   "      Configure the repository in the specified path.  By default, this is"
+   "      set to the parent directory of FILE."
    "  -q, --quiet"
    "      Suppress logs. Only warnings and error messages will be printed."
    "  --version"
@@ -291,6 +294,7 @@ repository it is contained in."
 (define (main-getopts args)
   (getopt-long args
                '((help (single-char #\h))
+                 (repository-dir (single-char #\C) (value #t))
                  (quiet (single-char #\q))
                  (version))))
 
@@ -322,7 +326,10 @@ repository it is contained in."
           (make-exception-with-message (format #f
                                                "Not a file: ~s"
                                                file)))))
-      (annex-configure file)))))
+      (annex-configure (annex-repository (option-ref options
+                                                     'repository-dir
+                                                     (dirname file)))
+                       file)))))
 
 (define-public (main args)
   "Entry point."

@@ -269,9 +269,8 @@ on the type of configuration."
 
 (define (format-usage usage . rest)
   (string-join
-   (cons
-    (string-append "Usage: "$prog-name" "usage)
-    rest)
+   (cons (format #f "Usage: ~a ~a" $prog-name usage)
+         rest)
    "\n"))
 
 (define main-help
